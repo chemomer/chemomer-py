@@ -1,0 +1,17 @@
+[package]
+name = "chemomer"
+version = "0.1.0"
+edition = "2021"
+description = "Native Rust InChI engine — molfile in, identifier / AuxInfo / InChIKey out (the Python binding)"
+license = "MIT"
+repository = "https://github.com/chemomer/chemomer-py"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The engine, by its crate name, renamed: this crate is the `chemomer`
+# Python module, so the engine lands as `chemomer_engine` here.
+chemomer_engine = { package = "chemomer", git = "https://github.com/chemomer/chemomer" }
+pyo3 = "0.22"

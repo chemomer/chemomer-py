@@ -1,0 +1,71 @@
+# The Python binding (pyo3) — build, test, and the gated publish path.
+#
+# Dispatch-only: nothing runs on push or PR. A bare dispatch builds the
+# wheel + sdist and runs the smoke test. Publishing is doubly gated —
+# an explicit `publish` dispatch input AND the PyPI trusted-publisher
+# registration for project "chemomer" with repository chemomer/chemomer-py,
+# workflow pypi.yml, no environment.
+
+name: PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish to PyPI after the build passes"
+        required: false
+        default: false
+        type: boolean
+      version:
+        description: "Version to publish (must match pyproject.toml; required when publish=true)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: pip install maturin
+      - run: maturin build --out dist
+      - run: maturin sdist --out dist
+      - run: pip install --no-index --find-links dist chemomer
+      - run: python scripts/smoke_py.py
+
+  publish:
+    if: inputs.publish
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # PyPI trusted publishing (OIDC): the publish credential is the
+      # job's OIDC token — no stored secret.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify version matches input
+        run: |
+          actual=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "$actual" != "${{ inputs.version }}" ]; then
+            echo "Version mismatch: input=${{ inputs.version }}, pyproject.toml=$actual"
+            exit 1
+          fi
+          echo "Publishing $actual"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pip install maturin
+      - run: maturin build --out dist
+      - run: maturin sdist --out dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
