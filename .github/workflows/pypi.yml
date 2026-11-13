@@ -35,7 +35,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: pip install maturin
-      - run: maturin build --out dist
+      - run: maturin build --release --out dist
       - run: maturin sdist --out dist
       - run: pip install --no-index --find-links dist chemomer
       - run: python scripts/smoke_py.py
@@ -66,6 +66,6 @@ jobs:
           python-version: "3.12"
       - uses: dtolnay/rust-toolchain@stable
       - run: pip install maturin
-      - run: maturin build --out dist
+      - run: maturin build --release --out dist
       - run: maturin sdist --out dist
       - uses: pypa/gh-action-pypi-publish@release/v1
