@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+env:
+  # Hermetic CI: the oracle corpus ref is pinned, never floating.
+  # Bump this line deliberately with each corpus ride.
+  CORPUS_REF: v0.3.41
+
 jobs:
   build-test:
     strategy:
@@ -21,8 +26,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: pip install maturin
-      - run: maturin build --out dist
+      - run: maturin build --release --out dist
       - run: pip install --no-index --find-links dist chemomer
       - run: python scripts/smoke_py.py
+      # The PyO3 transport, gated by the oracle: every identity
+      # fixture's molfile through the built module, byte-compared
+      # against the recorded identifier / AuxInfo / InChIKey. The
+      # engine's CI owns the full gate; this one covers the Python
+      # boundary, which the smoke test alone cannot.
+      - name: Clone the inchi-tests oracle corpus at $CORPUS_REF
+        uses: actions/checkout@v7
+        with:
+          repository: chemomer/inchi-tests
+          ref: ${{ env.CORPUS_REF }}
+          path: .inchi-tests
+      - run: python scripts/oracle_gate.py .inchi-tests
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
