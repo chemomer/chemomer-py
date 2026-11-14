@@ -14,8 +14,8 @@
 // silenced here: macro-generated code outside this module's control.
 #![allow(clippy::useless_conversion)]
 
-use chemomer_engine::Engine;
 use chemomer_engine::rinchi::Directionality;
+use chemomer_engine::Engine;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -124,9 +124,15 @@ fn rinchi_decode<'py>(
         let mut role_list = Vec::with_capacity(components.len());
         for component in components {
             let entry = PyDict::new_bound(py);
-            entry.set_item("inchi", component.inchi_string().map_err(error_to_value_error)?)?;
+            entry.set_item(
+                "inchi",
+                component.inchi_string().map_err(error_to_value_error)?,
+            )?;
             entry.set_item("aux", component.aux_string().map_err(error_to_value_error)?)?;
-            entry.set_item("inchikey", component.inchikey().map_err(error_to_value_error)?)?;
+            entry.set_item(
+                "inchikey",
+                component.inchikey().map_err(error_to_value_error)?,
+            )?;
             role_list.push(entry);
         }
         decoded.set_item(role, PyList::new_bound(py, role_list))?;
