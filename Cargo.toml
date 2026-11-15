@@ -13,5 +13,5 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # The engine, by its crate name, renamed: this crate is the `chemomer`
 # Python module, so the engine lands as `chemomer_engine` here.
-chemomer_engine = { package = "chemomer", git = "https://github.com/chemomer/chemomer" }
+chemomer_engine = { package = "chemomer", git = "https://github.com/chemomer/chemomer", tag = "v1.1.1" }
 pyo3 = "0.22"
