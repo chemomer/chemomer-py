@@ -11,7 +11,7 @@ from importlib.metadata import version
 
 import chemomer
 
-ENGINE_SEMVER = r"1\.1\.2"
+ENGINE_SEMVER = r"1\.1\.4"
 
 WATER = "\n".join(
     [
@@ -35,6 +35,48 @@ if aux != "AuxInfo=1/0/N:1/rA:1nO/rB:/rC:12,12,0;":
     failures.append(f"aux: got {aux!r}")
 if key != "XLYOFNOQVPJJNP-UHFFFAOYSA-N":
     failures.append(f"key: got {key!r}")
+
+# The ABI-v2 surface (chemomer 1.1.3+): the record with the
+# force-equilibrium option, and the SMILES reader.
+WATER_RXN = "\n".join(
+    [
+        "$RXN",
+        "water-is-water",
+        "  chemomer",
+        "",
+        "  1  1",
+        "$MOL",
+        "",
+        "  AsciiChem",
+        "",
+        "  1  0  0  0  0  0  0  0  0  0999 V2000",
+        "   12.0000   12.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0  0",
+        "M  END",
+        "$MOL",
+        "",
+        "  AsciiChem",
+        "",
+        "  1  0  0  0  0  0  0  0  0  0999 V2000",
+        "   12.0000   12.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0  0",
+        "M  END",
+        "",
+    ]
+)
+record = chemomer.rinchi_record_from_rxn(WATER_RXN)
+if record["rinchi"] != "RInChI=1.00.1S/H2O/h1H2<>H2O/h1H2/d+":
+    failures.append(f"record rinchi: got {record['rinchi']!r}")
+equil = chemomer.rinchi_record_from_rxn(WATER_RXN, force_equilibrium=True)
+if equil["rinchi"] != "RInChI=1.00.1S/H2O/h1H2<>H2O/h1H2/d=":
+    failures.append(f"equilibrium rinchi: got {equil['rinchi']!r}")
+if equil["rinchikey"] != (
+    "Short-RInChIKey=SA-EUHFF-XLYOFNOQVP-XLYOFNOQVP-UHFFFADPSC-NUHFF-NUHFF-NUHFF-ZZZ"
+):
+    failures.append(f"equilibrium rinchikey: got {equil['rinchikey']!r}")
+
+smiles_inchi, smiles_key = chemomer.from_smiles("c1ccccc1")
+if smiles_inchi != "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H":
+    failures.append(f"smiles identifier: got {smiles_inchi!r}")
+
 scheme = re.compile(rf"\A{ENGINE_SEMVER}\.\d+\Z")
 if not scheme.match(version("chemomer")):
     failures.append(
