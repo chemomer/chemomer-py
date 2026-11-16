@@ -144,6 +144,59 @@ fn error_to_value_error(error: chemomer_engine::Error) -> PyErr {
     PyValueError::new_err(error.message().to_string())
 }
 
+/// Derives the five-line RInChI identity record from a V2000 RXNfile
+/// in one call, with the equilibrium option: `{ "rinchi": ...,
+/// "rauxinfo": ..., "rinchikey": ..., "longKey": ..., "webKey": ... }`
+/// — the five lines the individual exports needed five calls for.
+/// `force_equilibrium` derives the `/d` form and the equilibrium key
+/// shapes exactly as the oracle corpus's `forceEquilibrium` cases
+/// record (chemomer#120, the ABI-v2 semantics in-process).
+#[pyfunction]
+#[pyo3(signature = (rxnfile, force_equilibrium = false))]
+fn rinchi_record_from_rxn<'py>(
+    py: Python<'py>,
+    rxnfile: &str,
+    force_equilibrium: bool,
+) -> PyResult<Bound<'py, PyDict>> {
+    let mut reaction = chemomer_engine::parse_rxnfile(rxnfile).map_err(error_to_value_error)?;
+    if force_equilibrium {
+        reaction.set_directionality(chemomer_engine::rinchi::Directionality::Equilibrium);
+    }
+    let record = PyDict::new_bound(py);
+    record.set_item(
+        "rinchi",
+        reaction.rinchi_string().map_err(error_to_value_error)?,
+    )?;
+    record.set_item(
+        "rauxinfo",
+        reaction.rinchi_auxinfo().map_err(error_to_value_error)?,
+    )?;
+    record.set_item(
+        "rinchikey",
+        reaction.rinchi_short_key().map_err(error_to_value_error)?,
+    )?;
+    record.set_item(
+        "longKey",
+        reaction.rinchi_long_key().map_err(error_to_value_error)?,
+    )?;
+    record.set_item(
+        "webKey",
+        reaction.rinchi_web_key().map_err(error_to_value_error)?,
+    )?;
+    Ok(record)
+}
+
+/// Reads a day-1 SMILES string and derives `(inchi, inchikey)` — the
+/// local SMILES ingest edge (the `smiles.parg` contract;
+/// chemomer#121).
+#[pyfunction]
+fn from_smiles(smiles: &str) -> PyResult<(String, String)> {
+    Engine::from_smiles(smiles)
+        .and_then(|engine| engine.inchi_string().map(|inchi| (engine, inchi)))
+        .and_then(|(engine, inchi)| engine.inchikey().map(|inchikey| (inchi, inchikey)))
+        .map_err(|error| PyValueError::new_err(error.message().to_string()))
+}
+
 #[pymodule]
 fn chemomer(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(from_molfile, module)?)?;
@@ -155,5 +208,7 @@ fn chemomer(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(rinchi_web_key_from_rxn, module)?)?;
     module.add_function(wrap_pyfunction!(rinchi_from_rd, module)?)?;
     module.add_function(wrap_pyfunction!(rinchi_decode, module)?)?;
+    module.add_function(wrap_pyfunction!(rinchi_record_from_rxn, module)?)?;
+    module.add_function(wrap_pyfunction!(from_smiles, module)?)?;
     Ok(())
 }
