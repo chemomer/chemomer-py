@@ -11,7 +11,7 @@ from importlib.metadata import version
 
 import chemomer
 
-ENGINE_SEMVER = r"1\.1\.6"
+ENGINE_SEMVER = r"1\.1\.8"
 
 WATER = "\n".join(
     [
